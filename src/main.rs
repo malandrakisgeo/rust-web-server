@@ -1,15 +1,22 @@
-use std::{env, fs, thread};
+use std::{env, thread};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::ops::Add;
+use std::time::SystemTime;
 use crate::config::Config;
+use crate::http_status::StatusCode;
 use crate::response::ReferaResponse;
 
 mod config;
 mod response;
 mod content_parser;
 mod error;
+mod http_status;
+
+struct FileCacheTuple(Vec<u8>, SystemTime, usize);
+
+static mut FILE_CACHE: Option<HashMap<String, FileCacheTuple>> = None;
 
 fn main() {
     let mut conf = Config::default_config();
@@ -21,23 +28,19 @@ fn main() {
 
     let listener = TcpListener::bind(address).unwrap();
 
+    unsafe { FILE_CACHE = Some(HashMap::new()); }
+
     for stream in listener.incoming() {
         let mut stream = stream.unwrap();
         thread::spawn(move || {
-            // read( &mut  stream);
             handle_http_req(&mut stream);
         });
     }
-    //Ok(())
 }
 
 
-fn handle_http_req( mut request: &mut TcpStream) {
-  //  let mut request_reader = BufReader::new(request);
-   // request_reader.
-
-
-    let mut buf_reader = BufReader::new( request.try_clone().unwrap());
+fn handle_http_req(mut request: &mut TcpStream) {
+    let mut buf_reader = BufReader::new(request.try_clone().unwrap());
 
 
     let header_vector: Vec<_> = buf_reader
@@ -47,54 +50,70 @@ fn handle_http_req( mut request: &mut TcpStream) {
         .take_while(|line| !line.is_empty())
         .collect();
 
-   let http_headers = determine_headers(&header_vector);
+    let http_headers = determine_headers(&header_vector);
 
     let method_url: Vec<_> = http_headers.1.split(" ").collect(); //Returns ["HTTP-METHOD-NAME", "url", "HTTP/X.X"]
 
     let resp: ReferaResponse;
 
     if method_url.get(0).unwrap().contains("GET") {
-        resp = get_reply(method_url.get(1).unwrap(), http_headers.0);
-    } else if method_url.get(0).unwrap().contains("POST"){
-        resp = post_reply(&mut buf_reader,  http_headers.0);
-    }
-    else{
-        resp =   ReferaResponse::new("HTTP/1.1 200 OK".parse().unwrap(), None, Vec::new())
+        resp = get_reply_new(method_url.get(1).unwrap(), http_headers.0);
+    } else if method_url.get(0).unwrap().contains("POST") {
+        resp = post_reply(&mut buf_reader, http_headers.0);
+    } else {
+        resp = ReferaResponse::new(StatusCode::BadRequest, None, Vec::new())
     }
     &request.write_all(resp.as_u8().as_slice()).unwrap();
+}
 
 
+fn get_reply_new(url: &str, headers: HashMap<String, String>) -> ReferaResponse {
+    unsafe {
+        if (&FILE_CACHE.as_ref()).unwrap().get(url).is_none() {
+            let file = content_parser::get_file_new(url);
+            if file.0.is_empty() {
+                ReferaResponse::new(StatusCode::NotFound, None, content_parser::error_page())
+            } else {
+                let re = (FILE_CACHE.as_mut()).unwrap().insert(url.to_string(), file).unwrap();
+                ReferaResponse::new(StatusCode::Ok, None, re.0.clone())
+            }
+        } else {
+            let file = &FILE_CACHE.as_ref().unwrap().get(url).unwrap();
+            ReferaResponse::new(StatusCode::Ok, None, file.0.clone())
+        }
+    }
 }
 
 fn get_reply(url: &str, headers: HashMap<String, String>) -> ReferaResponse {
-    let html = content_parser::get_content(url);
+    let file = content_parser::get_file(url);
 
-    ReferaResponse::new("HTTP/1.1 200 OK".parse().unwrap(), None, html)
+    if file.is_empty() {
+        ReferaResponse::new(StatusCode::NotFound, None, content_parser::error_page())
+    } else {
+        ReferaResponse::new(StatusCode::Ok, None, file)
+    }
 }
 
 
-
-fn post_reply(buf_reader: &mut BufReader<TcpStream>, headers: HashMap<String, String>) -> ReferaResponse{  //WIP - TODO
+fn post_reply(buf_reader: &mut BufReader<TcpStream>, headers: HashMap<String, String>) -> ReferaResponse {  //WIP - TODO
     let content_length_str = headers.get_key_value("Content-Length").unwrap().1;
     let mut buffer: Vec<u8> = vec![0; content_length_str.trim().parse::<usize>().unwrap()];
     buf_reader.read_exact(&mut buffer).unwrap();
+
     let result = content_parser::post_content(buffer.clone(), "aa");
-    println!("wrote in file");
 
-
-    ReferaResponse::new("HTTP/1.1 200 OK".parse().unwrap(), None, Vec::new())
-
+    ReferaResponse::new(StatusCode::Ok, None, Vec::new())
 }
 
-fn determine_headers(vector: &Vec<String>) -> (HashMap<String, String>, String){
+fn determine_headers(vector: &Vec<String>) -> (HashMap<String, String>, String) {
     let mut header_map = HashMap::new();
 
     let request_type = vector.get(0).unwrap().clone();
 
-    for i in 1..vector.len(){
+    for i in 1..vector.len() {
         let splittable = vector.get(i).unwrap();
         let mut splitted: Vec<String> = splittable.split(":").map(|s| s.to_string()).collect();
-        let name = String::from(( splitted).get(0).unwrap());
+        let name = String::from((splitted).get(0).unwrap());
         splitted.remove(0);
         let value = (splitted).concat();
         header_map.insert(name, value);
@@ -103,25 +122,25 @@ fn determine_headers(vector: &Vec<String>) -> (HashMap<String, String>, String){
 }
 
 
-fn post_reply_alt(request: &mut TcpStream) -> ReferaResponse {  //WIP - TODO
+/*fn post_reply_alt(request: &mut TcpStream) -> ReferaResponse {  //WIP - TODO
     let mut buffer = vec![0; 1024];
     let bb = request.read_to_end(&mut buffer).unwrap();
     // println!("{}", String::from_utf8(content_vector.clone()).unwrap());
     println!("{bb}");
-    ReferaResponse::new("HTTP/1.1 200 OK".parse().unwrap(), None, Vec::new())
-}
+    ReferaResponse::new(StatusCode::Ok, None, Vec::new())
+}*/
 
-fn read(stream: &mut TcpStream) {
+/*fn read(stream: &mut TcpStream) {
     let mut buf = vec![0; 1024];
     println!("Received {} bytes", stream.read(&mut buf).unwrap());
-    let resp = ReferaResponse::new("HTTP/1.1 200 OK".parse().unwrap(), None, Vec::new());
+    let resp = ReferaResponse::new(StatusCode::Ok, None, Vec::new());
     stream.write_all(resp.as_u8().as_slice()).unwrap();
 }
 
 
 
 
-/*
+
     This causes the request to stack. Why?
     According to stackoverflow, "read_to_string reads into String until EOF which will not happen until you close the stream from the writer side."
 

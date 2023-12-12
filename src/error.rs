@@ -27,10 +27,6 @@ impl error::Error for ReferaError {
         // implementations.
         match *self {
             ReferaError::Io(ref err) => err.description(),
-            // Normally we can just write `err.description()`, but the error
-            // type has a concrete method called `description`, which conflicts
-            // with the trait method. For now, we must explicitly call
-            // `description` through the `Error` trait.
             //ReferaError::Parse(ref err) => error::Error::description(err),
         }
     }
