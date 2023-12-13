@@ -3,23 +3,18 @@ use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::ops::Add;
-use std::time::SystemTime;
 use crate::config::Config;
-use crate::http_status::StatusCode;
-use crate::response::ReferaResponse;
+use crate::http::http_status::StatusCode;
+use crate::response::refera_response::ReferaResponse;
 
 mod config;
-mod response;
 mod content_parser;
-mod error;
-mod http_status;
-
-struct FileCacheTuple(Vec<u8>, SystemTime, usize);
-
-static mut FILE_CACHE: Option<HashMap<String, FileCacheTuple>> = None;
+mod server_cache;
+mod response;
+mod http;
 
 fn main() {
-    let mut conf = Config::default_config();
+    let conf = Config::default_config();
     let args = env::args();
     if args.len() < 1 {
         //TODO: Replace default config values with the args, if given.
@@ -28,7 +23,7 @@ fn main() {
 
     let listener = TcpListener::bind(address).unwrap();
 
-    unsafe { FILE_CACHE = Some(HashMap::new()); }
+    server_cache::cache_init();
 
     for stream in listener.incoming() {
         let mut stream = stream.unwrap();
@@ -39,9 +34,8 @@ fn main() {
 }
 
 
-fn handle_http_req(mut request: &mut TcpStream) {
+fn handle_http_req(request: &mut TcpStream) {
     let mut buf_reader = BufReader::new(request.try_clone().unwrap());
-
 
     let header_vector: Vec<_> = buf_reader
         .by_ref()
@@ -57,7 +51,7 @@ fn handle_http_req(mut request: &mut TcpStream) {
     let resp: ReferaResponse;
 
     if method_url.get(0).unwrap().contains("GET") {
-        resp = get_reply_new(method_url.get(1).unwrap(), http_headers.0);
+        resp = get_reply(method_url.get(1).unwrap(), http_headers.0);
     } else if method_url.get(0).unwrap().contains("POST") {
         resp = post_reply(&mut buf_reader, http_headers.0);
     } else {
@@ -66,32 +60,19 @@ fn handle_http_req(mut request: &mut TcpStream) {
     &request.write_all(resp.as_u8().as_slice()).unwrap();
 }
 
-
-fn get_reply_new(url: &str, headers: HashMap<String, String>) -> ReferaResponse {
-    unsafe {
-        if (&FILE_CACHE.as_ref()).unwrap().get(url).is_none() {
-            let file = content_parser::get_file_new(url);
-            if file.0.is_empty() {
-                ReferaResponse::new(StatusCode::NotFound, None, content_parser::error_page())
-            } else {
-                let re = (FILE_CACHE.as_mut()).unwrap().insert(url.to_string(), file).unwrap();
-                ReferaResponse::new(StatusCode::Ok, None, re.0.clone())
-            }
-        } else {
-            let file = &FILE_CACHE.as_ref().unwrap().get(url).unwrap();
-            ReferaResponse::new(StatusCode::Ok, None, file.0.clone())
+fn get_reply(url: &str, headers: HashMap<String, String>) -> ReferaResponse {
+    let cached_file = server_cache::file_lookup(url);
+    if cached_file.is_none(){
+        let file = content_parser::get_file(url);
+        if!file.0.is_empty(){
+            server_cache::insert_file(url, &file);
+            return ReferaResponse::new(StatusCode::Ok, None, file.0.clone());
+        }else{
+            return ReferaResponse::new(StatusCode::NotFound, None, content_parser::error_page());
         }
     }
-}
 
-fn get_reply(url: &str, headers: HashMap<String, String>) -> ReferaResponse {
-    let file = content_parser::get_file(url);
-
-    if file.is_empty() {
-        ReferaResponse::new(StatusCode::NotFound, None, content_parser::error_page())
-    } else {
-        ReferaResponse::new(StatusCode::Ok, None, file)
-    }
+    ReferaResponse::new(StatusCode::Ok, None, cached_file.unwrap().0.clone())
 }
 
 
@@ -100,7 +81,7 @@ fn post_reply(buf_reader: &mut BufReader<TcpStream>, headers: HashMap<String, St
     let mut buffer: Vec<u8> = vec![0; content_length_str.trim().parse::<usize>().unwrap()];
     buf_reader.read_exact(&mut buffer).unwrap();
 
-    let result = content_parser::post_content(buffer.clone(), "aa");
+    //let result = content_parser::post_content(buffer.clone(), "aa");
 
     ReferaResponse::new(StatusCode::Ok, None, Vec::new())
 }
@@ -122,13 +103,6 @@ fn determine_headers(vector: &Vec<String>) -> (HashMap<String, String>, String) 
 }
 
 
-/*fn post_reply_alt(request: &mut TcpStream) -> ReferaResponse {  //WIP - TODO
-    let mut buffer = vec![0; 1024];
-    let bb = request.read_to_end(&mut buffer).unwrap();
-    // println!("{}", String::from_utf8(content_vector.clone()).unwrap());
-    println!("{bb}");
-    ReferaResponse::new(StatusCode::Ok, None, Vec::new())
-}*/
 
 /*fn read(stream: &mut TcpStream) {
     let mut buf = vec![0; 1024];

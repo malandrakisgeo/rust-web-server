@@ -1,30 +1,17 @@
 use std::{fs};
 use std::fs::{ ReadDir};
-use std::io::{Read, Write};
+use std::io::{Read};
 use std::os::unix::fs::MetadataExt;
 use std::time::SystemTime;
 use chrono::{DateTime, Utc};
-use crate::error::ReferaError;
 use urlencoding::decode;
-use crate::FileCacheTuple;
+use crate::response::refera_error::ReferaError;
+use crate::server_cache::FileCacheTuple;
 
 
-pub fn get_file(name: &str) -> Vec<u8>{
+pub fn get_file(name: &str) -> FileCacheTuple{
     //TODO: Add support for range requests
-    if name.eq("") || name.eq(" ") || name.eq("/") {
-        return default_page();
-    }
-    if name.eq("/favicon.ico") {
-        return Vec::new();
-    }
 
-     match parse_song(name){
-         Ok(data) => data,
-         Err(err) => Vec::new()
-     }
-}
-
-pub fn get_file_new(name: &str) -> FileCacheTuple{
     let f: FileCacheTuple;
     let mut ve: Vec<u8> = Vec::new();
     if name.eq("") || name.eq(" ") || name.eq("/") {
@@ -34,7 +21,7 @@ pub fn get_file_new(name: &str) -> FileCacheTuple{
     } */else {
         ve = match parse_song(name){
             Ok(data) => data,
-            Err(err) => Vec::new() //TODO: Add error handling
+            Err(err) => Vec::new()
         };
     }
 
@@ -45,7 +32,7 @@ pub fn get_file_new(name: &str) -> FileCacheTuple{
 
 pub fn post_content(content: Vec<u8>, name: &str) -> &str{
     println!("in post content"); //Result<&str, ReferaError>
-    let mut creation = fs::File::create("./static/posted_by_user/".to_owned()+name).expect("failure");
+   // let mut creation = fs::File::create("./static/posted_by_user/".to_owned()+name).expect("failure");
    // let size_written = creation.write_all(content.as_slice()).expect("failure!");
 
     "ok"
@@ -70,7 +57,7 @@ pub fn error_page() -> Vec<u8>{
 
 
 fn parse_song(path: &str)-> Result<Vec<u8>, ReferaError>{
-    let proper_path = path.replace("%20", " "); //TODO: Fix
+   // let proper_path = path.replace("%20", " "); //TODO: Fix
     let decoded = decode(path).expect("UTF-8");
 
     let mp3 = fs::read("./static/songs".to_owned()+decoded.as_ref()).map_err(|e| ReferaError::from(e))?;

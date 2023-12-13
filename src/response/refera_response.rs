@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::http_status::StatusCode;
+use crate::http::http_status::StatusCode;
 
 
 pub struct ReferaResponse {

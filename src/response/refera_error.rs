@@ -6,7 +6,7 @@ pub enum ReferaError {
 }
 impl From<io::Error> for ReferaError {
     fn from(err: io::Error) -> ReferaError {
-        println!("attempting");
+        println!("Error!");
         ReferaError::Io(err)
     }
 }
