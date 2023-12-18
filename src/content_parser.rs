@@ -1,6 +1,6 @@
 use std::{fs};
 use std::fs::{ ReadDir};
-use std::io::{Read};
+//use std::io::{Read};
 use std::os::unix::fs::MetadataExt;
 use std::time::SystemTime;
 use chrono::{DateTime, Utc};
@@ -13,7 +13,7 @@ pub fn get_file(name: &str) -> FileCacheTuple{
     //TODO: Add support for range requests
 
     let f: FileCacheTuple;
-    let mut ve: Vec<u8> = Vec::new();
+    let mut ve: Vec<u8>;
     if name.eq("") || name.eq(" ") || name.eq("/") {
         ve = default_page();
     } /*else if name.eq("/favicon.ico") {

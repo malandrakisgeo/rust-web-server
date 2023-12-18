@@ -24,7 +24,7 @@ impl ReferaResponse {
         vec.append(&mut Vec::from("HTTP/1.1 "));
         let ln = self.body.len();
         let status_str = self.status.clone();
-        let mut headers: Vec<String>  = self.headers.clone().into_iter()
+        let headers: Vec<String>  = self.headers.clone().into_iter()
             .map(|(header, value)| header + ":" + &value)
             .collect();
 

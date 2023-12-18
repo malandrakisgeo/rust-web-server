@@ -23,7 +23,7 @@ fn main() {
 
     let listener = TcpListener::bind(address).unwrap();
 
-    server_cache::cache_init();
+    server_cache::cache_init(conf);
 
     for stream in listener.incoming() {
         let mut stream = stream.unwrap();

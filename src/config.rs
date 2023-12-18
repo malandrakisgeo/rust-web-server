@@ -7,6 +7,7 @@ pub struct Config {
     pub auth: HashMap<String, String>,
     pub file_dir: String,
     pub tls: Option<TlsConfig>,
+    pub max_cache_files: usize
 }
 
 
@@ -27,6 +28,7 @@ impl Config {
             auth: Default::default(),
             file_dir: ".".to_string(),
             tls: None,
+            max_cache_files: 5
         }
     }
 }

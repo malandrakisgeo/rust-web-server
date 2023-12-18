@@ -1,16 +1,21 @@
 use std::collections::HashMap;
 use std::thread;
 use std::time::SystemTime;
+use crate::config::Config;
 
 #[derive(Clone)]
 pub struct FileCacheTuple(pub Vec<u8>, pub SystemTime, pub usize);
 
 static mut FILE_CACHE: Option<HashMap<String, FileCacheTuple>> = None;
+static mut MAX_CACHE_FILES: usize = 0;
 
-pub fn cache_init() {
-    unsafe { FILE_CACHE = Some(HashMap::new()); }
+pub fn cache_init(config: Config) {
+    unsafe {
+        FILE_CACHE = Some(HashMap::new());
+        MAX_CACHE_FILES = config.max_cache_files;
+    }
     thread::spawn(move || {
-        while true { //TODO: Perhaps find some more elegant way?
+        loop {
             check_and_clean();
         }
     });
@@ -29,7 +34,7 @@ pub fn file_lookup(name: &str) -> Option<FileCacheTuple> {
 
 pub fn insert_file(name: &str, file: &FileCacheTuple) {
     unsafe {
-        &FILE_CACHE.as_mut().unwrap().insert(name.parse().unwrap(), file.clone());
+        let _ = &FILE_CACHE.as_mut().unwrap().insert(name.parse().unwrap(), file.clone());
     }
 }
 
@@ -39,21 +44,20 @@ fn remove_oldest() {
     let mut oldest: SystemTime = SystemTime::now();
     unsafe {
         for (key, val) in FILE_CACHE.as_mut().unwrap().iter() {
-            if (oldest.min(val.1) != oldest) { //if the oldest is not the oldest
+            if oldest.min(val.1) != oldest { //if older than the oldest
                 oldest = val.1;
                 name = key;
             }
         }
         //    println!("{}", oldest);
-
-        &FILE_CACHE.as_mut().unwrap().remove(name).unwrap();
+        let _ = &FILE_CACHE.as_mut().unwrap().remove(name).unwrap();
     }
 }
 
 
 fn check_and_clean() {
     unsafe {
-        if (&FILE_CACHE.as_mut().unwrap().len() > &3) { //Add more songs under /static/songs and test it
+        if &FILE_CACHE.as_mut().unwrap().len() > &MAX_CACHE_FILES { //Add more songs under /static/songs and test it
             remove_oldest(); //TODO: Add DeepSize
         }
     }
