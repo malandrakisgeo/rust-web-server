@@ -8,11 +8,13 @@ pub struct FileCacheTuple(pub Vec<u8>, pub SystemTime, pub usize);
 
 static mut FILE_CACHE: Option<HashMap<String, FileCacheTuple>> = None;
 static mut MAX_CACHE_FILES: usize = 0;
+static mut MAX_FILE_SIZE: usize = 0;
 
 pub fn cache_init(config: Config) {
     unsafe {
         FILE_CACHE = Some(HashMap::new());
         MAX_CACHE_FILES = config.max_cache_files;
+        MAX_FILE_SIZE = config.largest_cacheable_file_size
     }
     thread::spawn(move || {
         loop {
@@ -34,7 +36,9 @@ pub fn file_lookup(name: &str) -> Option<FileCacheTuple> {
 
 pub fn insert_file(name: &str, file: &FileCacheTuple) {
     unsafe {
-        let _ = &FILE_CACHE.as_mut().unwrap().insert(name.parse().unwrap(), file.clone());
+        if file.0.len() < MAX_FILE_SIZE{
+            let _ = &FILE_CACHE.as_mut().unwrap().insert(name.parse().unwrap(), file.clone());
+        }
     }
 }
 
