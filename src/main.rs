@@ -52,8 +52,6 @@ fn handle_http_req(request: &mut TcpStream) {
 
     if method_url.get(0).unwrap().contains("GET") {
         resp = get_reply(method_url.get(1).unwrap(), http_headers.0);
-    } else if method_url.get(0).unwrap().contains("POST") {
-        resp = post_reply(&mut buf_reader, http_headers.0);
     } else {
         resp = ReferaResponse::new(StatusCode::BadRequest, None, Vec::new())
     }
@@ -64,27 +62,17 @@ fn get_reply(url: &str, headers: HashMap<String, String>) -> ReferaResponse {
     let cached_file = server_cache::file_lookup(url);
     if cached_file.is_none(){
         let file = content_parser::get_file(url);
-        if!file.0.is_empty(){
+        return if !file.0.is_empty() {
             server_cache::insert_file(url, &file);
-            return ReferaResponse::new(StatusCode::Ok, None, file.0.clone());
-        }else{
-            return ReferaResponse::new(StatusCode::NotFound, None, content_parser::error_page());
+            ReferaResponse::new(StatusCode::Ok, None, file.0.clone())
+        } else {
+            ReferaResponse::new(StatusCode::NotFound, None, content_parser::error_page())
         }
     }
 
     ReferaResponse::new(StatusCode::Ok, None, cached_file.unwrap().0.clone())
 }
 
-
-fn post_reply(buf_reader: &mut BufReader<TcpStream>, headers: HashMap<String, String>) -> ReferaResponse {  //WIP - TODO
-    let content_length_str = headers.get_key_value("Content-Length").unwrap().1;
-    let mut buffer: Vec<u8> = vec![0; content_length_str.trim().parse::<usize>().unwrap()];
-    buf_reader.read_exact(&mut buffer).unwrap();
-
-    //let result = content_parser::post_content(buffer.clone(), "aa");
-
-    ReferaResponse::new(StatusCode::Ok, None, Vec::new())
-}
 
 fn determine_headers(vector: &Vec<String>) -> (HashMap<String, String>, String) {
     let mut header_map = HashMap::new();
@@ -104,16 +92,7 @@ fn determine_headers(vector: &Vec<String>) -> (HashMap<String, String>, String) 
 
 
 
-/*fn read(stream: &mut TcpStream) {
-    let mut buf = vec![0; 1024];
-    println!("Received {} bytes", stream.read(&mut buf).unwrap());
-    let resp = ReferaResponse::new(StatusCode::Ok, None, Vec::new());
-    stream.write_all(resp.as_u8().as_slice()).unwrap();
-}
-
-
-
-
+/*
 
     This causes the request to stack. Why?
     According to stackoverflow, "read_to_string reads into String until EOF which will not happen until you close the stream from the writer side."

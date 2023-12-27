@@ -29,7 +29,7 @@ impl Config {
             auth: Default::default(),
             file_dir: ".".to_string(),
             tls: None,
-            max_cache_files: 5,
+            max_cache_files: 10,
             largest_cacheable_file_size: 1000000000 //100MB in bytes
         }
     }

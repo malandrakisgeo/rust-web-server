@@ -1,5 +1,6 @@
 use std::{fs};
-use std::fs::{ ReadDir};
+use std::fs::{ReadDir};
+use std::io::Write;
 //use std::io::{Read};
 use std::os::unix::fs::MetadataExt;
 use std::time::SystemTime;
@@ -9,17 +10,15 @@ use crate::response::refera_error::ReferaError;
 use crate::server_cache::FileCacheTuple;
 
 
-pub fn get_file(name: &str) -> FileCacheTuple{
+pub fn get_file(name: &str) -> FileCacheTuple {
     //TODO: Add support for range requests
 
     let f: FileCacheTuple;
     let mut ve: Vec<u8>;
     if name.eq("") || name.eq(" ") || name.eq("/") {
         ve = default_page();
-    } /*else if name.eq("/favicon.ico") {
-        ve = Vec::new();
-    } */else {
-        ve = match parse_song(name){
+    } else {
+        ve = match parse_file(name) {
             Ok(data) => data,
             Err(err) => Vec::new()
         };
@@ -30,42 +29,49 @@ pub fn get_file(name: &str) -> FileCacheTuple{
     return f;
 }
 
-pub fn post_content(content: Vec<u8>, name: &str) -> &str{
-    println!("in post content"); //Result<&str, ReferaError>
-   // let mut creation = fs::File::create("./static/posted_by_user/".to_owned()+name).expect("failure");
-   // let size_written = creation.write_all(content.as_slice()).expect("failure!");
 
-    "ok"
+fn default_page() -> Vec<u8> {
+    let contents = fs::read_to_string("./static/index.html").unwrap_or("Page not found!".parse().unwrap());
+
+    Vec::from(contents)
 }
 
-fn default_page() -> Vec<u8>{
-    let paths = fs::read_dir("./static/songs").unwrap_or(fs::read_dir(".").unwrap());
 
-    let contents = fs::read_to_string("./static/default.html").unwrap_or("Page not found!".parse().unwrap());
+fn songs_page(mut contents: Vec<u8>) -> Vec<u8> {
+    let paths = fs::read_dir("./static/malandrakisgeo-songs-site-example/songs/").unwrap_or(fs::read_dir(".").unwrap());
     let tds = generate_tds(paths);
-    let content_to_serve = contents.replace("{replace_me!}", &tds);
 
+    let str = String::from_utf8(contents).unwrap();
+    let content_to_serve = str.replace("{replace_me!}", &tds);
 
     Vec::from(content_to_serve)
 }
 
-pub fn error_page() -> Vec<u8>{
+
+pub fn error_page() -> Vec<u8> {
     let error_page = fs::read_to_string("./static/not_found.html").unwrap();
 
     Vec::from(error_page)
 }
 
 
-fn parse_song(path: &str)-> Result<Vec<u8>, ReferaError>{
-   // let proper_path = path.replace("%20", " "); //TODO: Fix
+fn parse_file(path: &str) -> Result<Vec<u8>, ReferaError> {
+    // let proper_path = path.replace("%20", " "); //TODO: Fix
+    let mut file: Vec<u8> = Vec::new();
     let decoded = decode(path).expect("UTF-8");
 
-    let mp3 = fs::read("./static/songs".to_owned()+decoded.as_ref()).map_err(|e| ReferaError::from(e))?;
+    if fs::read_dir("./static".to_owned() + path).is_err() {
+        file = fs::read("./static".to_owned() + decoded.as_ref()).map_err(|e| ReferaError::from(e))?;
+    } else { //if the url corresponds to a directory under /static
+        file = fs::read("./static".to_owned() + decoded.as_ref() + "/index.html").map_err(|e| ReferaError::from(e))?; //retrieve the index.html
+    }
 
-    Ok(mp3)
+    if (path.contains("malandrakisgeo") && !path.contains(".mp3")) {
+        file = songs_page(file);
+    }
 
+    Ok(file)
 }
-
 
 
 /*fn parse_song_evolved(path: &str)-> Result<Vec<u8>, ReferaError>{
@@ -80,7 +86,7 @@ fn parse_song(path: &str)-> Result<Vec<u8>, ReferaError>{
 
 }*/
 
-pub fn generate_tds(files: ReadDir) -> String{
+pub fn generate_tds(files: ReadDir) -> String {
     let mut tds_vec = Vec::new();
 
     for file in files {
@@ -91,19 +97,17 @@ pub fn generate_tds(files: ReadDir) -> String{
 
         let date_modified = data.metadata().unwrap().modified().unwrap(); //TODO: fix
         let dt: DateTime<Utc> = date_modified.clone().into();
-        let showable_datetime =  dt.format("%d/%m/%Y"); //%d/%m/%Y %T to show even time
+        let showable_datetime = dt.format("%d/%m/%Y"); //%d/%m/%Y %T to show even time
 
         let file_type = std::path::Path::new(path.as_path()).extension().unwrap_or("unknown_type".as_ref()).to_str().unwrap();
         let size = &data.metadata().unwrap().size();
 
-        //WORKS: let td =  format!("<tr>\n<td>  {file_name}</td>\n<td>{showable_datetime}</td>\n<td>{file_type}</td>\n<td>{size}</td>\n</tr>\n");
-        let td =  format!("<tr>\n<td><a href=\"{file_name}\">{file_name}</a> </td>\n<td>{showable_datetime}</td>\n<td>{file_type}</td>\n<td>{size}</td>\n</tr>\n");
+        let td = format!("<tr>\n<td><a href=\"songs/{file_name}\">{file_name}</a> </td>\n<td>{showable_datetime}</td>\n<td>{file_type}</td>\n<td>{size}</td>\n</tr>\n");
+        //  let td = format!("<tr>\n<td><a href=\"malandrakisgeo-songs-site-example/songs/{file_name}\">{file_name}</a> </td>\n<td>{showable_datetime}</td>\n<td>{file_type}</td>\n<td>{size}</td>\n</tr>\n");
 
         tds_vec.append(&mut Vec::from(td));
     }
 
     String::from_utf8(tds_vec).unwrap()
-
-
 }
 
