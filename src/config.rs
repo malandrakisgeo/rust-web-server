@@ -24,7 +24,7 @@ impl Config {
     pub fn default_config() -> Config {
 
         return  Config{
-            address: "127.0.0.1".to_string(), //127.0.0.1, 0.0.0.0   127.0.0.1:7151
+            address: "127.0.0.1".to_string(), //127.0.0.1:7151
             port: "7151".to_string(),
             auth: Default::default(),
             file_dir: ".".to_string(),

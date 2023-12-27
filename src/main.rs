@@ -3,15 +3,17 @@ use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::ops::Add;
+use crate::cache::server_cache;
 use crate::config::Config;
+use crate::content_manager::content_parser;
 use crate::http::http_status::StatusCode;
 use crate::response::refera_response::ReferaResponse;
 
 mod config;
-mod content_parser;
-mod server_cache;
 mod response;
 mod http;
+mod cache;
+mod content_manager;
 
 fn main() {
     let conf = Config::default_config();

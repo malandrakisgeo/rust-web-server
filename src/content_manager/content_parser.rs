@@ -1,11 +1,7 @@
 use std::{fs};
-use std::fs::{ReadDir};
-use std::io::Write;
-//use std::io::{Read};
-use std::os::unix::fs::MetadataExt;
 use std::time::SystemTime;
-use chrono::{DateTime, Utc};
 use urlencoding::decode;
+use crate::content_manager::song_site::songs_page;
 use crate::response::refera_error::ReferaError;
 use crate::server_cache::FileCacheTuple;
 
@@ -37,17 +33,6 @@ fn default_page() -> Vec<u8> {
 }
 
 
-fn songs_page(mut contents: Vec<u8>) -> Vec<u8> {
-    let paths = fs::read_dir("./static/malandrakisgeo-songs-site-example/songs/").unwrap_or(fs::read_dir(".").unwrap());
-    let tds = generate_tds(paths);
-
-    let str = String::from_utf8(contents).unwrap();
-    let content_to_serve = str.replace("{replace_me!}", &tds);
-
-    Vec::from(content_to_serve)
-}
-
-
 pub fn error_page() -> Vec<u8> {
     let error_page = fs::read_to_string("./static/not_found.html").unwrap();
 
@@ -56,17 +41,19 @@ pub fn error_page() -> Vec<u8> {
 
 
 fn parse_file(path: &str) -> Result<Vec<u8>, ReferaError> {
-    // let proper_path = path.replace("%20", " "); //TODO: Fix
+     let mut proper_path = path.replace("%20", " ");
+
+
     let mut file: Vec<u8> = Vec::new();
     let decoded = decode(path).expect("UTF-8");
 
-    if fs::read_dir("./static".to_owned() + path).is_err() {
+    if fs::read_dir("./static".to_owned() + proper_path.as_mut_str()).is_err() { //if not a subdirectory
         file = fs::read("./static".to_owned() + decoded.as_ref()).map_err(|e| ReferaError::from(e))?;
     } else { //if the url corresponds to a directory under /static
         file = fs::read("./static".to_owned() + decoded.as_ref() + "/index.html").map_err(|e| ReferaError::from(e))?; //retrieve the index.html
     }
 
-    if (path.contains("malandrakisgeo") && !path.contains(".mp3")) {
+    if (proper_path.contains("malandrakisgeo-songs-site-example") && !proper_path.contains(".mp3")) {
         file = songs_page(file);
     }
 
@@ -84,7 +71,7 @@ fn parse_file(path: &str) -> Result<Vec<u8>, ReferaError> {
 
     Ok(Vec::from(buffer))
 
-}*/
+}
 
 pub fn generate_tds(files: ReadDir) -> String {
     let mut tds_vec = Vec::new();
@@ -109,5 +96,5 @@ pub fn generate_tds(files: ReadDir) -> String {
     }
 
     String::from_utf8(tds_vec).unwrap()
-}
+}*/
 
