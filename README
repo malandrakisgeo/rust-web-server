@@ -6,9 +6,8 @@ The server expects an index.html and a not_found.html
 
 Features:
     Caching
-
+    Logging
 
 TODOs:
     Range requests
     Security
-    Logging
