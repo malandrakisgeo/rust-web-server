@@ -1,7 +1,6 @@
 use std::{fs};
 use std::time::SystemTime;
 use urlencoding::decode;
-use crate::content_manager::song_site::songs_page;
 use crate::response::refera_error::ReferaError;
 use crate::server_cache::FileCacheTuple;
 
@@ -54,9 +53,7 @@ fn parse_file(path: &str) -> Result<Vec<u8>, ReferaError> {
         file = fs::read("./static".to_owned() + decoded.as_ref() + "/index.html").map_err(|e| ReferaError::from(e))?; //retrieve the index.html
     }
 
-    if proper_path.contains("malandrakisgeo-songs-site-example") && !proper_path.contains(".mp3") {
-        file = songs_page(file);
-    }
+
 
     Ok(file)
 }
