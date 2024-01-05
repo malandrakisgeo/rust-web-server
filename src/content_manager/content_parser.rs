@@ -34,7 +34,8 @@ fn default_page() -> Vec<u8> {
 
 
 pub fn error_page() -> Vec<u8> {
-    let error_page = fs::read_to_string("./static/not_found.html").unwrap();
+    let error_page = fs::read_to_string("./static/not_found.html")
+        .unwrap_or_else(|_| { String::from("Not found!")});
 
     Vec::from(error_page)
 }
@@ -53,48 +54,10 @@ fn parse_file(path: &str) -> Result<Vec<u8>, ReferaError> {
         file = fs::read("./static".to_owned() + decoded.as_ref() + "/index.html").map_err(|e| ReferaError::from(e))?; //retrieve the index.html
     }
 
-    if (proper_path.contains("malandrakisgeo-songs-site-example") && !proper_path.contains(".mp3")) {
+    if proper_path.contains("malandrakisgeo-songs-site-example") && !proper_path.contains(".mp3") {
         file = songs_page(file);
     }
 
     Ok(file)
 }
-
-
-/*fn parse_song_evolved(path: &str)-> Result<Vec<u8>, ReferaError>{
-    let decoded = decode(path).expect("UTF-8");
-
-    const BUFFER_LEN: usize = 51200;
-    let mut buffer = [0u8; BUFFER_LEN];
-    let mut file = File::open("./static/songs".to_owned()+decoded.as_ref())?;
-    file.read(&mut buffer).unwrap();
-
-    Ok(Vec::from(buffer))
-
-}
-
-pub fn generate_tds(files: ReadDir) -> String {
-    let mut tds_vec = Vec::new();
-
-    for file in files {
-        let data = &file.unwrap();
-        let path = &data.path();
-        let _name = data.file_name();
-        let file_name = _name.to_str().unwrap();
-
-        let date_modified = data.metadata().unwrap().modified().unwrap(); //TODO: fix
-        let dt: DateTime<Utc> = date_modified.clone().into();
-        let showable_datetime = dt.format("%d/%m/%Y"); //%d/%m/%Y %T to show even time
-
-        let file_type = std::path::Path::new(path.as_path()).extension().unwrap_or("unknown_type".as_ref()).to_str().unwrap();
-        let size = &data.metadata().unwrap().size();
-
-        let td = format!("<tr>\n<td><a href=\"songs/{file_name}\">{file_name}</a> </td>\n<td>{showable_datetime}</td>\n<td>{file_type}</td>\n<td>{size}</td>\n</tr>\n");
-        //  let td = format!("<tr>\n<td><a href=\"malandrakisgeo-songs-site-example/songs/{file_name}\">{file_name}</a> </td>\n<td>{showable_datetime}</td>\n<td>{file_type}</td>\n<td>{size}</td>\n</tr>\n");
-
-        tds_vec.append(&mut Vec::from(td));
-    }
-
-    String::from_utf8(tds_vec).unwrap()
-}*/
 

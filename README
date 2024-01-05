@@ -1,7 +1,7 @@
 A web server written in Rust. Suitable for static content.
 
 Add your website under /static either as a subdirectory or by replacing all contents, and voila.
-The server expects an index.html.
+The server expects an index.html and a not_found.html
 
 
 Features:

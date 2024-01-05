@@ -1,18 +1,22 @@
 use std::collections::HashMap;
 use std::thread;
 use std::time::SystemTime;
+use once_cell::sync::Lazy;
 use crate::config::Config;
+use crate::core::mutex::Mutex;
 
 #[derive(Clone)]
 pub struct FileCacheTuple(pub Vec<u8>, pub SystemTime, pub usize);
 
-static mut FILE_CACHE: Option<HashMap<String, FileCacheTuple>> = None;
+static mut FILE_CACHE: Lazy<Mutex<HashMap<String, FileCacheTuple>>> = Lazy::new(|| { Mutex::new(HashMap::new()) });
+//= Mutex::new(HashMap::new());
+static mut CURRENT_CACHE_SIZE: usize = 0;
+
 static mut MAX_CACHE_FILES: usize = 0;
 static mut MAX_FILE_SIZE: usize = 0;
 
 pub fn cache_init(config: Config) {
     unsafe {
-        FILE_CACHE = Some(HashMap::new());
         MAX_CACHE_FILES = config.max_cache_files;
         MAX_FILE_SIZE = config.largest_cacheable_file_size
     }
@@ -26,9 +30,11 @@ pub fn cache_init(config: Config) {
 pub fn file_lookup(name: &str) -> Option<FileCacheTuple> {
     let mut file: Option<FileCacheTuple> = Option::None;
     unsafe {
-        if (&FILE_CACHE.as_ref()).unwrap().get(name).is_some() {
-            file = (&FILE_CACHE.as_ref()).unwrap().get(name).cloned();
+        let cache = FILE_CACHE.acquire();
+        if cache.get(name).is_some() {
+            file = cache.get(name).cloned();
         }
+        FILE_CACHE.free();
     }
 
     file
@@ -36,8 +42,11 @@ pub fn file_lookup(name: &str) -> Option<FileCacheTuple> {
 
 pub fn insert_file(name: &str, file: &FileCacheTuple) {
     unsafe {
-        if file.0.len() < MAX_FILE_SIZE{
-            let _ = &FILE_CACHE.as_mut().unwrap().insert(name.parse().unwrap(), file.clone());
+        if file.0.len() < MAX_FILE_SIZE {
+            let mut cache = FILE_CACHE.acquire_mut();
+            let _ = &cache.insert(name.parse().unwrap(), file.clone());
+            CURRENT_CACHE_SIZE += 1;
+            FILE_CACHE.free();
         }
     }
 }
@@ -46,23 +55,27 @@ pub fn insert_file(name: &str, file: &FileCacheTuple) {
 fn remove_oldest() {
     let mut name: &str = " ";
     let mut oldest: SystemTime = SystemTime::now();
+
     unsafe {
-        for (key, val) in FILE_CACHE.as_mut().unwrap().iter() {
+        let mut cache = FILE_CACHE.acquire_mut();
+        let cl = cache.clone();
+        for (key, val) in cl.iter() {
             if oldest.min(val.1) != oldest { //if older than the oldest
                 oldest = val.1;
                 name = key;
             }
         }
-        //    println!("{}", oldest);
-        let _ = &FILE_CACHE.as_mut().unwrap().remove(name).unwrap();
+        let _ = cache.remove(name).unwrap();
+        CURRENT_CACHE_SIZE -= 1;
+        FILE_CACHE.free();
     }
 }
 
 
 fn check_and_clean() {
     unsafe {
-        if &FILE_CACHE.as_mut().unwrap().len() > &MAX_CACHE_FILES { //Add more songs under /static/songs and test it
-            remove_oldest(); //TODO: Add DeepSize
+        if CURRENT_CACHE_SIZE == MAX_CACHE_FILES {
+            remove_oldest();
         }
     }
 }

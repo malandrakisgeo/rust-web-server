@@ -4,12 +4,12 @@ use std::os::unix::fs::MetadataExt;
 use chrono::{DateTime, Utc};
 
 /*
-    The reason this project exists. I wanted to improve my Rust skills by writing a server that renders an HTML file with a list of songs,
-    and serves them in demand. But I chose to make it a general purpose web server instead.
+    The reason why this project exists. I wanted to improve my Rust skills by writing a server that renders an HTML
+    file with a list of songs, and serves them in demand. But I chose to make it a general purpose web server instead.
     TODO: Create a separate branch with the song_site
  */
 
-pub fn songs_page(mut contents: Vec<u8>) -> Vec<u8> {
+pub fn songs_page(contents: Vec<u8>) -> Vec<u8> {
     let paths = fs::read_dir("./static/malandrakisgeo-songs-site-example/songs/").unwrap_or(fs::read_dir(".").unwrap());
     let tds = generate_tds(paths);
 
