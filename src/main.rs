@@ -18,6 +18,7 @@ mod core;
 mod content_manager;
 mod logger;
 
+
 fn main() {
     let conf = Config::default_config();
 
@@ -25,7 +26,6 @@ fn main() {
     ctrlc::set_handler(move || flush_log())
         .expect("Error setting Ctrl-C handler");
     let listener = TcpListener::bind(address).unwrap();
-
     server_cache::cache_init(conf);
 
     for stream in listener.incoming() {
@@ -51,6 +51,7 @@ fn handle_http_req(request: &mut TcpStream) {
     let req_url = method_url.get(1).unwrap_or(&"");
     let http_version = method_url.get(2).unwrap_or(&http_error);
     let user_agent = headers.get("User-Agent").unwrap_or(&user_agent_error);
+    println!("{}", req_url.clone());
 
     log_request(request.peer_addr().unwrap(), http_method, req_url,
                 user_agent);

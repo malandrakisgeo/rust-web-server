@@ -2,5 +2,12 @@ ifconfig gia th local ip sou sto diktuo
 0.0.0.0:port gia na eisai oratos sto LAN sou
 sudo nmap -sn 192.168.1.0/24 gia na vreis tous allous sto diktuo sou
 
-sudo firewall-cmd --add-port=7151/tcp gia na anoikseis port
+sudo firewall-cmd --add-port=7151/tcp gia na anoikseis port (isws me --zone=home, --zone=internal)
 kai remove gia kleisimo
+
+sudo firewall-cmd --add-port=7151/tcp
+sudo firewall-cmd  --zone=home --add-port=7151/tcp
+sudo firewall-cmd  --zone=internal --add-port=7151/tcp
+
+firewall-cmd --list-all-zones
+firewall-cmd --get-zones
