@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::thread;
+use std::{thread, time};
 use std::time::SystemTime;
 use once_cell::sync::Lazy;
 use crate::config::Config;
@@ -27,6 +27,7 @@ pub fn cache_init(config: Config) {
     thread::spawn(move || {
         loop {
             check_and_clean();
+            thread::sleep(time::Duration::from_millis(1000));
         }
     });
 }

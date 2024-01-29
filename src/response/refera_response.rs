@@ -23,18 +23,23 @@ impl ReferaResponse {
         let mut vec: Vec<u8> = Vec::new();
         vec.append(&mut Vec::from("HTTP/1.1 "));
         let ln = self.body.len();
-        let status_str = self.status.clone();
-        let headers: Vec<String>  = self.headers.clone().into_iter()
-            .map(|(header, value)| header + ":" + &value)
+        let status_str = self.status.clone() + "\r\n";
+        let mut headerss: Vec<String>  = self.headers.clone().into_iter()
+            .map(|(header, value)| header + ": " + &value + "\r\n")
+            .collect();
+
+        let mut u8vec: Vec<u8>= headerss.clone().into_iter()
+            .flat_map(|(value)| value.as_bytes().to_vec())
             .collect();
 
         //vec.append(&mut headers);
-        let response =
-            format!("{status_str}\r\nContent-Length: {ln}\r\n\r\n");
-
-        vec.append(&mut Vec::from(response));
+        //let content =
+       //     format!("{status_str}\r\nContent-Length: {ln}\r\n\r\n");
+       // vec.append(&mut Vec::from(content));
+        vec.append(&mut Vec::from(status_str));
+        vec.append(&mut u8vec);
+        vec.append(&mut Vec::from( "\r\n"));
         vec.append(&mut self.body.clone());
-        //println!("{}",         String::from_utf8(vec.clone()).unwrap());
 
         return vec;
     }

@@ -1,6 +1,6 @@
 use std::fs::{File, OpenOptions};
 use std::hash::Hash;
-use std::io::{ BufWriter, Write};
+use std::io::{BufWriter, Write};
 use std::net::{SocketAddr};
 use std::os::unix::fs::OpenOptionsExt;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -20,16 +20,22 @@ static FILE_OPT: Lazy<File> = Lazy::new(|| {
         .unwrap()
 });
 static mut COMMON_BUFFER: Lazy<Mutex<BufWriter<File>>> = Lazy::new(|| unsafe {
-    Mutex::new(BufWriter::with_capacity(1000, FILE_OPT.try_clone().unwrap()))
+    Mutex::new(BufWriter::with_capacity(4096, FILE_OPT.try_clone().unwrap()))
 });
 
-pub fn log_request(address: SocketAddr, method: &str, url: &str, user_agent: &String) -> Result<(), ()> {
-    let st = format!("ip: {} ,  user-agent: {:?}, method: {:?}, requested resource: {:?}, on: {:?}  \n",
-                     address.ip(), user_agent, method, url, SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs());
+pub fn log_request(address: &String, method: &str, url: &str, user_agent: &String, referer: &String) -> Result<(), ()> {
 
+    if method.is_empty() || method.eq("") {
+       return Ok(());
+    }
+    let log = format!("ip: {}, referer: {},  user-agent: {:?}, method: {:?}, requested resource: {:?}, on: {:?}  \n",
+                      address, referer, user_agent,
+                      method, url, SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs());
+
+    println!("{}", log);
     unsafe {
         let mut buf = COMMON_BUFFER.acquire_mut();
-        buf.write(st.as_ref()).unwrap();
+        buf.write(log.as_ref()).unwrap();
         COMMON_BUFFER.free();
     }
 
@@ -44,7 +50,6 @@ pub fn flush_log() {
         COMMON_BUFFER.free();
     }
 }
-
 
 
 pub fn write_to_file() {}

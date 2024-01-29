@@ -18,8 +18,9 @@ pub fn get_file(name: &str) -> FileCacheTuple {
             Err(err) => Vec::new()
         };
     }
+    let length = ve.len();
 
-    f = FileCacheTuple(ve, SystemTime::now(), 0);
+    f = FileCacheTuple(ve, SystemTime::now(), length);
 
     return f;
 }
