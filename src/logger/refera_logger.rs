@@ -1,7 +1,6 @@
 use std::fs::{File, OpenOptions};
-use std::hash::Hash;
+//use std::hash::Hash;
 use std::io::{BufWriter, Write};
-use std::net::{SocketAddr};
 use std::os::unix::fs::OpenOptionsExt;
 use std::time::{SystemTime, UNIX_EPOCH};
 use once_cell::sync::Lazy;
@@ -19,7 +18,7 @@ static FILE_OPT: Lazy<File> = Lazy::new(|| {
         .open("log.txt")
         .unwrap()
 });
-static mut COMMON_BUFFER: Lazy<Mutex<BufWriter<File>>> = Lazy::new(|| unsafe {
+static mut COMMON_BUFFER: Lazy<Mutex<BufWriter<File>>> = Lazy::new(||  {
     Mutex::new(BufWriter::with_capacity(4096, FILE_OPT.try_clone().unwrap()))
 });
 
@@ -34,7 +33,7 @@ pub fn log_request(address: &String, method: &str, url: &str, user_agent: &Strin
 
     println!("{}", log);
     unsafe {
-        let mut buf = COMMON_BUFFER.acquire_mut();
+        let  buf = COMMON_BUFFER.acquire_mut();
         buf.write(log.as_ref()).unwrap();
         COMMON_BUFFER.free();
     }
@@ -45,11 +44,11 @@ pub fn log_request(address: &String, method: &str, url: &str, user_agent: &Strin
 
 pub fn flush_log() {
     unsafe {
-        let mut buffer = COMMON_BUFFER.acquire_mut();
+        let  buffer = COMMON_BUFFER.acquire_mut();
         let _ = buffer.flush();
         COMMON_BUFFER.free();
     }
 }
 
 
-pub fn write_to_file() {}
+//pub fn write_to_file() {}

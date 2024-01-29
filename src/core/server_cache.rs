@@ -19,7 +19,7 @@ pub fn cache_init(config: Config) {
     unsafe {
         MAX_CACHE_FILES = config.max_cache_files;
         MAX_FILE_SIZE = config.largest_cacheable_file_size;
-        if(MAX_CACHE_FILES == 0 || MAX_FILE_SIZE == 0){
+        if MAX_CACHE_FILES == 0 || MAX_FILE_SIZE == 0{
             return ;
         }
     }
@@ -48,7 +48,7 @@ pub fn file_lookup(name: &str) -> Option<FileCacheTuple> {
 pub fn insert_file(name: &str, file: &FileCacheTuple) {
     unsafe {
         if file.0.len() < MAX_FILE_SIZE {
-            let mut cache = FILE_CACHE.acquire_mut();
+            let cache = FILE_CACHE.acquire_mut();
             let _ = &cache.insert(name.parse().unwrap(), file.clone());
             CURRENT_CACHE_SIZE += 1;
             FILE_CACHE.free();
@@ -62,7 +62,7 @@ fn remove_oldest() {
     let mut oldest: SystemTime = SystemTime::now();
 
     unsafe {
-        let mut cache = FILE_CACHE.acquire_mut();
+        let cache = FILE_CACHE.acquire_mut();
         let cl = cache.clone();
         for (key, val) in cl.iter() {
             if oldest.min(val.1) != oldest { //if older than the oldest

@@ -9,7 +9,7 @@ pub fn get_file(name: &str) -> FileCacheTuple {
     //TODO: Add support for range requests
 
     let f: FileCacheTuple;
-    let mut ve: Vec<u8>;
+    let ve: Vec<u8>;
     if name.eq("") || name.eq(" ") || name.eq("/") {
         ve = default_page();
     } else {
@@ -45,7 +45,7 @@ fn parse_file(path: &str) -> Result<Vec<u8>, ReferaError> {
      let mut proper_path = path.replace("%20", " ");
 
 
-    let mut file: Vec<u8> = Vec::new();
+    let mut file: Vec<u8>;
     let decoded = decode(path).expect("UTF-8");
 
     if fs::read_dir("./static".to_owned() + proper_path.as_mut_str()).is_err() { //if not a subdirectory

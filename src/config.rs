@@ -31,8 +31,8 @@ impl Config {
             auth: Default::default(),
             file_dir: ".".to_string(),
             tls: None,
-            max_cache_files: 0,
-            largest_cacheable_file_size: 0 //100MB in bytes
+            max_cache_files: 20,
+            largest_cacheable_file_size: 1000000000 //100MB in bytes
         }
     }
 }

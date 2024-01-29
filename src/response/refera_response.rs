@@ -22,14 +22,13 @@ impl ReferaResponse {
     pub fn as_u8(&self) -> Vec<u8> {
         let mut vec: Vec<u8> = Vec::new();
         vec.append(&mut Vec::from("HTTP/1.1 "));
-        let ln = self.body.len();
         let status_str = self.status.clone() + "\r\n";
-        let mut headerss: Vec<String>  = self.headers.clone().into_iter()
+        let  headerss: Vec<String>  = self.headers.clone().into_iter()
             .map(|(header, value)| header + ": " + &value + "\r\n")
             .collect();
 
         let mut u8vec: Vec<u8>= headerss.clone().into_iter()
-            .flat_map(|(value)| value.as_bytes().to_vec())
+            .flat_map(|value| value.as_bytes().to_vec())
             .collect();
 
         //vec.append(&mut headers);

@@ -1,4 +1,3 @@
-use std::{thread};
 use std::collections::HashMap;
 use std::io::{Write};
 use std::net::{TcpListener, TcpStream};
@@ -7,7 +6,6 @@ use threadpool::ThreadPool;
 use crate::core::server_cache;
 use crate::config::Config;
 use crate::content_manager::content_parser;
-use crate::core::server_cache::FileCacheTuple;
 use crate::http::http_status::StatusCode;
 use crate::http::util::get_headers;
 use crate::logger::refera_logger::{flush_log, log_request};
@@ -64,12 +62,12 @@ fn handle_http_req(request: &mut TcpStream) -> Result<(), ()>{
     if possible_ip.eq(&binding){
         possible_ip = &b;
     }
-    log_request(possible_ip, http_method, req_url,
+    let _ = log_request(possible_ip, http_method, req_url,
                 user_agent, referer);
 
     if !http_version.contains("HTTP/1.1") && !http_version.contains("HTTP/1.0") && !http_version.contains("HTTP/2.0")  {
         resp = ReferaResponse::new(StatusCode::BadRequest, None, Vec::new());
-        &request.write_all(resp.as_u8().as_slice()).unwrap();
+        let _ =  &request.write_all(resp.as_u8().as_slice()).unwrap();
         return Ok(());
     }
 
@@ -78,7 +76,7 @@ fn handle_http_req(request: &mut TcpStream) -> Result<(), ()>{
     } else {
         resp = ReferaResponse::new(StatusCode::NoContent, None, Vec::new())
     }
-    &request.write_all(resp.as_u8().as_slice()).unwrap();
+    let _ = &request.write_all(resp.as_u8().as_slice()).unwrap();
     Ok(())
 }
 
