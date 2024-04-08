@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::{thread, time};
 use std::time::SystemTime;
 use once_cell::sync::Lazy;
 use crate::config::Config;
@@ -23,13 +22,6 @@ pub fn cache_init(config: Config) {
             return ;
         }
     }
-
-    thread::spawn(move || {
-        loop {
-            check_and_clean();
-            thread::sleep(time::Duration::from_millis(1000));
-        }
-    });
 }
 
 pub fn file_lookup(name: &str) -> Option<FileCacheTuple> {
@@ -49,6 +41,9 @@ pub fn insert_file(name: &str, file: &FileCacheTuple) {
     unsafe {
         if file.0.len() < MAX_FILE_SIZE {
             let cache = FILE_CACHE.acquire_mut();
+            while CURRENT_CACHE_SIZE >= MAX_CACHE_FILES {
+                remove_oldest(cache);
+            }
             let _ = &cache.insert(name.parse().unwrap(), file.clone());
             CURRENT_CACHE_SIZE += 1;
             FILE_CACHE.free();
@@ -57,14 +52,13 @@ pub fn insert_file(name: &str, file: &FileCacheTuple) {
 }
 
 
-fn remove_oldest() {
+fn remove_oldest(cache: &mut HashMap<String, FileCacheTuple>) {
     let mut name: &str = " ";
     let mut oldest: SystemTime = SystemTime::now();
 
     unsafe {
-        let cache = FILE_CACHE.acquire_mut();
         let cl = cache.clone();
-        for (key, val) in cl.iter() {
+        for (key, val) in cl.iter() { //TODO: The same using a FIFO structure instead
             if oldest.min(val.1) != oldest { //if older than the oldest
                 oldest = val.1;
                 name = key;
@@ -72,15 +66,7 @@ fn remove_oldest() {
         }
         let _ = cache.remove(name).unwrap();
         CURRENT_CACHE_SIZE -= 1;
-        FILE_CACHE.free();
     }
 }
 
 
-fn check_and_clean() {
-    unsafe {
-        if CURRENT_CACHE_SIZE == MAX_CACHE_FILES {
-            remove_oldest();
-        }
-    }
-}
